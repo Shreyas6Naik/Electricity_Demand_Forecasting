@@ -1,34 +1,59 @@
-# ⚡ Electricity Demand Forecasting Using LSTM
+# ⚡ Electricity Demand Forecasting Using Deep Learning
+
+A deep learning-based **electricity demand forecasting** project using a hybrid **Bidirectional LSTM and Convolutional Neural Network (CNN)** architecture to predict electricity demand in India from historical demand data.
 
 ## 📌 Project Overview
 
-This project focuses on forecasting **electricity demand using Deep Learning**, specifically a **Long Short-Term Memory (LSTM)** neural network.
+Electricity demand forecasting is an important time-series problem for energy planning, grid management, and resource allocation.
 
-The model learns patterns from historical electricity demand data and uses previous observations to predict future electricity demand. Since electricity consumption is a time-dependent variable, LSTM is well suited for capturing sequential and temporal patterns in the data.
+This project uses historical **All India electricity demand data** and develops a deep learning model capable of learning temporal patterns from previous demand observations.
 
-The project demonstrates an end-to-end machine learning workflow including **data preprocessing, exploratory analysis, time-series preparation, feature scaling, LSTM model development, model training, prediction, and performance visualization**.
+The model uses the previous **60 observations** to predict the next electricity-demand value. A hybrid architecture combining **Bidirectional LSTM, Conv1D, MaxPooling and Dense layers** is used to capture sequential and local patterns in the demand data.
+
+The complete implementation is provided in:
+
+`Final_Project_LSTM.ipynb`
 
 ---
 
 ## 🎯 Objectives
 
-* Analyze historical electricity demand patterns.
-* Prepare time-series data for deep learning.
-* Normalize demand values for effective neural network training.
-* Develop an **LSTM-based forecasting model**.
-* Predict future electricity demand based on historical observations.
-* Compare actual and predicted demand values.
-* Visualize model performance over time.
+* Analyze historical electricity demand data for India.
+* Prepare and transform the dataset for time-series forecasting.
+* Normalize demand values using Min-Max scaling.
+* Create sequential input windows using the previous 60 observations.
+* Build a hybrid Bidirectional LSTM-CNN deep learning model.
+* Train the model to forecast electricity demand.
+* Generate predictions for the final 1,000 observations.
+* Compare actual and predicted electricity demand.
+* Calculate demand deviation and percentage deviation.
 
 ---
 
-## 🧠 Why LSTM?
+## 🗂️ Dataset
 
-Electricity demand is a time-series problem where previous demand values can influence future demand.
+The project uses historical electricity demand data for **All India**.
 
-Traditional neural networks may struggle to retain information from earlier observations. **LSTM networks** address this problem using memory cells and gates that allow the model to learn long-term dependencies in sequential data.
+The dataset is stored as:
 
-In this project, the LSTM model uses historical electricity demand observations to learn temporal patterns and generate demand forecasts.
+```text
+demand-for-all-india-fro.csv
+```
+
+The original dataset contains a `Category` field from which the notebook extracts:
+
+* **Date**
+* **Demand Value**
+
+The extracted date is converted into a Pandas datetime format and the observations are sorted chronologically before modelling.
+
+### Target Variable
+
+```text
+All India
+```
+
+The `All India` electricity-demand series is used as the target variable for forecasting.
 
 ---
 
@@ -36,147 +61,325 @@ In this project, the LSTM model uses historical electricity demand observations 
 
 ```text
 Historical Electricity Demand Data
-              ↓
-       Data Exploration
-              ↓
-       Data Preprocessing
-              ↓
-        Data Scaling
-              ↓
-   Time-Series Sequence Creation
-              ↓
-       Train/Test Split
-              ↓
-        LSTM Model
-              ↓
-          Training
-              ↓
-         Prediction
-              ↓
-   Inverse Transformation
-              ↓
- Actual vs Predicted Demand
+                │
+                ▼
+        Data Preprocessing
+                │
+                ▼
+      Extract Date & Demand
+                │
+                ▼
+       Sort by Date
+                │
+                ▼
+        Min-Max Scaling
+                │
+                ▼
+   Create 60-Step Sequences
+                │
+                ▼
+     Bidirectional LSTM
+                │
+                ▼
+           Dropout
+                │
+                ▼
+           Conv1D
+                │
+                ▼
+        Max Pooling
+                │
+                ▼
+            Flatten
+                │
+                ▼
+        Dense Layer
+                │
+                ▼
+      Predicted Demand
+                │
+                ▼
+      Inverse Scaling
+                │
+                ▼
+Actual vs Predicted Demand
 ```
 
 ---
 
-## 📊 Dataset
+## 🧹 Data Preprocessing
 
-The project uses historical electricity demand data for **India**.
+The notebook performs the following preprocessing steps:
 
-### Dataset File
+### 1. Load the dataset
+
+```python
+df = pd.read_csv('demand-for-all-india-fro.csv')
+```
+
+### 2. Extract the date
+
+The date is extracted from the `Category` column and converted into a datetime object.
+
+### 3. Extract the demand value
+
+The demand value is extracted from the `Category` field and converted to an integer.
+
+### 4. Remove unnecessary columns
+
+The intermediate `Category` and `Value` columns are removed after the required information has been extracted.
+
+### 5. Sort chronologically
+
+The dataset is sorted by `Date` to preserve the time-series sequence.
+
+### 6. Normalize demand
+
+The `All India` demand values are scaled to the range **0–1** using:
+
+```python
+MinMaxScaler(feature_range=(0, 1))
+```
+
+This helps the neural network train more efficiently.
+
+---
+
+## 🧠 Time-Series Sequence Creation
+
+The model uses a **60-observation lookback window**.
+
+For every prediction:
 
 ```text
-demand-for-all-india-fro.csv
+Previous 60 observations
+          ↓
+       LSTM-CNN
+          ↓
+Next demand value
 ```
 
-The repository contains the dataset alongside the LSTM notebook.
+For example:
 
-The demand observations are treated as a time series, allowing the model to learn patterns from previous observations.
+```text
+t1, t2, t3, ..., t60  →  t61
+t2, t3, t4, ..., t61  →  t62
+t3, t4, t5, ..., t62  →  t63
+```
+
+The resulting input is reshaped into the three-dimensional format required by the neural network:
+
+```text
+(samples, time steps, features)
+```
+
+with:
+
+```text
+time steps = 60
+features = 1
+```
 
 ---
 
-## 🛠️ Technologies & Libraries
+# 🧠 Model Architecture
+
+The project uses a hybrid **Bidirectional LSTM + CNN** architecture.
+
+### Architecture
+
+```text
+Input
+  │
+  │ 60 time steps × 1 feature
+  ▼
+Bidirectional LSTM
+50 units
+return_sequences=True
+  │
+  ▼
+Dropout
+20%
+  │
+  ▼
+Conv1D
+64 filters
+kernel size = 3
+ReLU activation
+  │
+  ▼
+MaxPooling1D
+pool size = 2
+  │
+  ▼
+Flatten
+  │
+  ▼
+Dense
+50 neurons
+ReLU activation
+  │
+  ▼
+Dense
+1 neuron
+  │
+  ▼
+Predicted Electricity Demand
+```
+
+### Why this architecture?
+
+**Bidirectional LSTM**
+
+Captures temporal relationships within the input sequence by processing the sequence in both directions.
+
+**Dropout**
+
+A dropout rate of **20%** is used to reduce the risk of overfitting.
+
+**Conv1D**
+
+The convolutional layer helps identify local patterns within the sequential demand data.
+
+**MaxPooling1D**
+
+Reduces the dimensionality of the extracted features while retaining important information.
+
+**Dense layers**
+
+Transform the extracted features into the final electricity-demand prediction.
+
+---
+
+## ⚙️ Model Configuration
+
+| Parameter          |              Value |
+| ------------------ | -----------------: |
+| Lookback Window    |    60 observations |
+| LSTM Type          | Bidirectional LSTM |
+| LSTM Units         |                 50 |
+| Dropout            |               0.20 |
+| Conv1D Filters     |                 64 |
+| Conv1D Kernel Size |                  3 |
+| Pool Size          |                  2 |
+| Dense Units        |                 50 |
+| Output Units       |                  1 |
+| Optimizer          |               Adam |
+| Loss Function      | Mean Squared Error |
+| Epochs             |                 50 |
+| Batch Size         |                 32 |
+| Total Parameters   |            132,965 |
+
+The Keras model summary reports **132,965 trainable parameters**.
+
+---
+
+# 📈 Model Training
+
+The model was trained for **50 epochs** using:
+
+```python
+regressor.fit(
+    X_train,
+    y_train,
+    epochs=50,
+    batch_size=32
+)
+```
+
+The training loss decreased consistently throughout training:
+
+| Epoch | Training Loss |
+| ----: | ------------: |
+|     1 |        0.0077 |
+|     5 |        0.0044 |
+|    10 |        0.0032 |
+|    20 |        0.0020 |
+|    30 |        0.0016 |
+|    40 |        0.0014 |
+|    50 |        0.0012 |
+
+This represents a substantial reduction in training loss during the 50 training epochs.
+
+> **Note:** The reported loss is Mean Squared Error on the **scaled demand values**, so it should not be interpreted directly as MW².
+
+---
+
+# 🔮 Forecasting
+
+For evaluation, the notebook uses the **last 1,000 observations** as the testing set.
+
+The previous 60 observations are included when constructing the input sequences so that the model has the required historical context for each prediction.
+
+The predicted values are then converted back from the scaled representation to their original demand scale using:
+
+```python
+scaler.inverse_transform(predicted_stock_price)
+```
+
+---
+
+# 📊 Prediction Analysis
+
+The notebook creates a comparison DataFrame containing:
+
+```text
+Date
+True_Demand
+Predicted_Demand
+Demand_Deviation
+Demand_Deviation_Percentage
+```
+
+### Demand Deviation
+
+The absolute difference between actual and predicted demand is calculated as:
+
+```python
+abs(True_Demand - Predicted_Demand)
+```
+
+### Demand Deviation Percentage
+
+The percentage deviation is calculated as:
+
+```python
+(abs(True_Demand - Predicted_Demand) / True_Demand) * 100
+```
+
+This allows the forecasting error to be examined both in absolute demand units and relative percentage terms.
+
+---
+
+## 🛠️ Technologies Used
 
 ### Programming Language
 
 * Python
 
-### Machine Learning / Deep Learning
-
-* TensorFlow
-* Keras
-
-### Data Analysis
+### Data Processing
 
 * Pandas
 * NumPy
 
-### Visualization
+### Machine Learning
 
-* Matplotlib
+* Scikit-learn
+* MinMaxScaler
 
-### Development Environment
+### Deep Learning
 
-* Jupyter Notebook
+* TensorFlow
+* Keras
 
----
+### Model Components
 
-## 🧪 Methodology
-
-### 1. Data Loading
-
-The historical electricity demand dataset is loaded using Pandas and examined to understand its structure and variables.
-
-### 2. Data Preprocessing
-
-The data is cleaned and prepared for time-series modelling. Relevant demand observations are extracted and transformed into a format suitable for an LSTM network.
-
-### 3. Feature Scaling
-
-Electricity demand values are scaled before being passed to the neural network. Scaling helps improve the stability and efficiency of neural-network training.
-
-### 4. Sequence Creation
-
-Historical observations are converted into sequences.
-
-For example:
-
-```text
-Previous Demand Values → Future Demand
-```
-
-The model therefore learns the relationship between past demand and subsequent demand.
-
-### 5. LSTM Model
-
-An LSTM neural network is developed using TensorFlow/Keras.
-
-Conceptually:
-
-```text
-Input Sequence
-      ↓
-   LSTM Layer
-      ↓
-   Dense Layer
-      ↓
-Predicted Demand
-```
-
-### 6. Model Training
-
-The model is trained using historical sequences. Training and validation loss are monitored to evaluate how well the model learns from the data.
-
-### 7. Forecasting
-
-After training, the model generates demand predictions for unseen observations.
-
-### 8. Visualization
-
-Actual and predicted electricity demand values are plotted to visually evaluate forecasting performance.
-
----
-
-## 📈 Model Evaluation
-
-The model performance can be evaluated by comparing the **actual electricity demand** against the **predicted electricity demand**.
-
-A typical visualization is:
-
-```text
-Demand
-  │
-  │     Actual
-  │    ╱╲    ╱╲
-  │   ╱  ╲  ╱  ╲
-  │  ╱    ╲╱    ╲
-  │ ╱  Predicted
-  │╱  ╱╲  ╱╲
-  └──────────────────→ Time
-```
-
-The closer the predicted values are to the actual demand values, the better the forecasting performance.
+* Bidirectional LSTM
+* Dropout
+* Conv1D
+* MaxPooling1D
+* Flatten
+* Dense
 
 ---
 
@@ -186,37 +389,37 @@ The closer the predicted values are to the actual demand values, the better the 
 Electricity_Demand_Forecasting/
 │
 ├── Final_Project_LSTM.ipynb
-│   └── Complete LSTM forecasting implementation
+│   └── Complete forecasting implementation
 │
 ├── demand-for-all-india-fro.csv
-│   └── Historical India electricity demand dataset
+│   └── Historical India electricity-demand dataset
 │
 └── README.md
     └── Project documentation
 ```
 
-The current repository structure contains these three main files.
+The repository contains the forecasting notebook and associated dataset.
 
 ---
 
-## 🚀 Getting Started
+## 🚀 How to Run the Project
 
-### 1. Clone the Repository
+### 1. Clone the repository
 
 ```bash
 git clone https://github.com/Shreyas6Naik/Electricity_Demand_Forecasting.git
 ```
 
-### 2. Navigate to the Project
+### 2. Navigate to the project directory
 
 ```bash
 cd Electricity_Demand_Forecasting
 ```
 
-### 3. Install Required Libraries
+### 3. Install dependencies
 
 ```bash
-pip install numpy pandas matplotlib tensorflow jupyter
+pip install pandas numpy scikit-learn tensorflow jupyter
 ```
 
 ### 4. Launch Jupyter Notebook
@@ -225,46 +428,38 @@ pip install numpy pandas matplotlib tensorflow jupyter
 jupyter notebook
 ```
 
-Open:
+### 5. Open
 
 ```text
 Final_Project_LSTM.ipynb
 ```
 
-and run the notebook cells sequentially.
+Run the notebook cells sequentially.
 
 ---
 
-## 💡 Key Learning Outcomes
+## 💡 Key Takeaways
 
-Through this project, the following concepts are demonstrated:
-
-* Time-series forecasting
-* Deep Learning
-* LSTM neural networks
-* Sequential data modelling
-* Data preprocessing
-* Feature scaling
-* Train-validation splitting
-* Model training and validation
-* Prediction using trained neural networks
-* Actual vs predicted visualization
-* Python-based data analysis
+* Electricity demand can be modelled effectively as a **time-series forecasting problem**.
+* A **60-step historical window** was used to generate predictions.
+* The hybrid Bidirectional LSTM-CNN architecture combines sequential learning with convolutional feature extraction.
+* Training loss decreased from **0.0077 to 0.0012** over 50 epochs.
+* The model generated predictions for the final **1,000 observations** and calculated both absolute and percentage demand deviations.
 
 ---
 
 ## 🔮 Future Improvements
 
-The project can be further enhanced by:
+The project can be extended by:
 
-* Comparing LSTM with **GRU, CNN-LSTM, ARIMA and XGBoost**.
-* Incorporating additional variables such as **temperature, weather, holidays and economic indicators**.
+* Evaluating the model using **MAE, RMSE and MAPE**.
+* Creating a separate validation set instead of training exclusively on the training observations.
+* Comparing the hybrid model against standard **LSTM, GRU, ARIMA and XGBoost** models.
+* Incorporating external variables such as temperature, weather, holidays and seasonality.
 * Performing hyperparameter tuning.
-* Using multiple historical time steps as input.
-* Adding forecasting metrics such as **MAE, RMSE and MAPE**.
-* Implementing multi-step ahead forecasting.
-* Deploying the trained model using **Streamlit** or another web application framework.
-* Creating an interactive electricity-demand forecasting dashboard.
+* Implementing multi-step forecasting.
+* Deploying the forecasting model through a Streamlit application.
+* Building an interactive dashboard for electricity-demand monitoring.
 
 ---
 
@@ -272,17 +467,17 @@ The project can be further enhanced by:
 
 **Shreyas Naik**
 
-BE Electronics & Telecommunication Engineering
-Interested in **Business Analytics, Data Science, Operations and Technology Consulting**
+GitHub:
+https://github.com/Shreyas6Naik
 
 ---
 
-## ⭐ Project Highlights
+## ⭐ Project Summary
 
+**Project:** Electricity Demand Forecasting
 **Domain:** Energy Analytics
-**Problem Type:** Time-Series Forecasting
-**Model:** LSTM
+**Problem:** Time-Series Forecasting
+**Model:** Bidirectional LSTM + CNN
 **Framework:** TensorFlow / Keras
 **Language:** Python
-**Data:** Historical India Electricity Demand
-
+**Target:** All India Electricity Demand
